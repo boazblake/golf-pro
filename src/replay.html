@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golf Swing Visualization</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: 20px auto;
+    }
+    #controls {
+      text-align: center;
+      margin-top: 20px;
+    }
+    button, input[type="file"] {
+      margin: 5px;
+    }
+    #phaseLabel {
+      text-align: center;
+      font-size: 20px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Golf Swing Visualization</h1>
+  <input type="file" id="fileLoader" accept=".json">
+  <canvas id="poseCanvas" width="640" height="480"></canvas>
+  <div id="controls">
+    <button id="playPause" disabled>Play</button>
+    <button id="prevFrame" disabled>Previous Frame</button>
+    <button id="nextFrame" disabled>Next Frame</button>
+    <p>Frame: <span id="currentFrame">0</span> / <span id="totalFrames">0</span></p>
+  </div>
+  <div id="phaseLabel">Phase: <span id="currentPhase">N/A</span></div>
+  <script>
+    const canvas = document.getElementById("poseCanvas");
+    const ctx = canvas.getContext("2d");
+    const fileLoader = document.getElementById("fileLoader");
+    const playPauseButton = document.getElementById("playPause");
+    const prevFrameButton = document.getElementById("prevFrame");
+    const nextFrameButton = document.getElementById("nextFrame");
+    const currentFrameDisplay = document.getElementById("currentFrame");
+    const totalFramesDisplay = document.getElementById("totalFrames");
+    const currentPhaseLabel = document.getElementById("currentPhase");
+
+    let poseData = [];
+    let currentFrameIndex = 0;
+    let isPlaying = false;
+
+    // Load JSON file
+    fileLoader.addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          poseData = JSON.parse(e.target.result);
+          totalFramesDisplay.textContent = poseData.length;
+          currentFrameIndex = 0;
+          renderFrame(currentFrameIndex);
+          enableControls();
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // Enable controls after data is loaded
+    function enableControls() {
+      playPauseButton.disabled = false;
+      prevFrameButton.disabled = false;
+      nextFrameButton.disabled = false;
+    }
+
+    // Render a single frame
+    function renderFrame(frameIndex) {
+      if (frameIndex < 0 || frameIndex >= poseData.length) return;
+
+      const frame = poseData[frameIndex];
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw landmarks and connectors
+      drawLandmarks(frame.normalizedLandmarks.upperBody, "#00FF00"); // Green for upper body
+      drawLandmarks(frame.normalizedLandmarks.arms, "#FF0000"); // Red for arms
+      drawLandmarks(frame.normalizedLandmarks.lowerBody, "#0000FF"); // Blue for lower body
+      drawLandmarks(frame.normalizedLandmarks.legs, "#FFA500"); // Orange for legs
+
+      // Display the current phase
+      currentPhaseLabel.textContent = frame.phase;
+
+      // Update frame number in UI
+      currentFrameDisplay.textContent = frameIndex + 1;
+    }
+
+    // Helper function to draw landmarks
+function drawLandmarks(landmarks, color) {
+  const zoomFactor = 2; // Scale down the pose for a zoomed-out effect
+  const offsetX = canvas.width / 2 - canvas.width / (2 * zoomFactor);
+  const offsetY = canvas.height / 2 - canvas.height / (2 * zoomFactor);
+
+  ctx.fillStyle = color;
+
+  landmarks.forEach((landmark) => {
+    // Adjust normalized coordinates for zoom and center
+    const x = (landmark.x + 0.5) * canvas.width / zoomFactor + offsetX;
+    const y = (landmark.y + 0.5) * canvas.height / zoomFactor + offsetY;
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, 2 * Math.PI); // Draw a circle for each landmark
+    ctx.fill();
+  });
+}
+
+    // Play/Pause Animation
+    function playPauseAnimation() {
+      isPlaying = !isPlaying;
+      playPauseButton.textContent = isPlaying ? "Pause" : "Play";
+      if (isPlaying) animate();
+    }
+
+    // Animation Loop
+    function animate() {
+      if (!isPlaying) return;
+      renderFrame(currentFrameIndex);
+      currentFrameIndex = (currentFrameIndex + 1) % poseData.length; // Loop through frames
+      setTimeout(animate, 100); // Adjust speed as needed
+    }
+
+    // Controls for navigation
+    prevFrameButton.addEventListener("click", () => {
+      isPlaying = false;
+      playPauseButton.textContent = "Play";
+      currentFrameIndex = Math.max(0, currentFrameIndex - 1);
+      renderFrame(currentFrameIndex);
+    });
+
+    nextFrameButton.addEventListener("click", () => {
+      isPlaying = false;
+      playPauseButton.textContent = "Play";
+      currentFrameIndex = Math.min(poseData.length - 1, currentFrameIndex + 1);
+      renderFrame(currentFrameIndex);
+    });
+
+    playPauseButton.addEventListener("click", playPauseAnimation);
+  </script>
+</body>
+</html>

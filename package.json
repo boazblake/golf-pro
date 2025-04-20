@@ -1,0 +1,17 @@
+{
+  "name": "golf-pro",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "boazblake@gmail.com",
+  "license": "ISC",
+  "description": "AI ML golf swing",
+  "dependencies": {
+    "puppeteer": "^23.9.0",
+    "ytdl-core": "^4.11.5",
+    "ytpl": "^2.3.0"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Pose Tracking</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    video, canvas {
+      border: 1px solid #000;
+      display: block;
+      margin: 10px auto;
+    }
+    #controls {
+      margin-top: 10px;
+    }
+    button {
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Pose Tracking from Downloads</h1>
+  <select id="videoSelector"></select>
+  <button id="loadVideo">Load Video</button>
+  <video id="videoElement" width="640" height="360" autoplay muted controls ></video>
+  <canvas id="videoCanvas" width="640" height="360"></canvas>
+  <div id="controls">
+    <button id="recordButton">Record</button>
+    <button id="stopButton" disabled>Stop</button>
+    <button id="saveDataButton" disabled>Save Captured Data</button>
+    <p>Recording Status: <span id="recordingStatus">Idle</span></p>
+  </div>
+
+  <script>
+    const videoElement = document.getElementById("videoElement");
+    const canvas = document.getElementById("videoCanvas");
+    const ctx = canvas.getContext("2d");
+    const recordButton = document.getElementById("recordButton");
+    const stopButton = document.getElementById("stopButton");
+    const saveDataButton = document.getElementById("saveDataButton");
+    const recordingStatus = document.getElementById("recordingStatus");
+
+    const pose = new Pose({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+    });
+
+    pose.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: true,
+      smoothSegmentation: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+
+    let isRecording = false;
+    let recordedData = [];
+
+    pose.onResults((results) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+      if (results.poseLandmarks) {
+        // Draw landmarks and connections
+        // drawingUtils.drawConnectors(ctx, results.poseLandmarks, Pose.POSE_CONNECTIONS, {
+        //   color: '#00FF00',
+        //   lineWidth: 2,
+        // });
+        // drawingUtils.drawLandmarks(ctx, results.poseLandmarks, {
+        //   color: '#FF0000',
+        //   lineWidth: 1,
+        // });
+         results.poseLandmarks.forEach((landmark) => {
+        ctx.beginPath();
+        ctx.arc(landmark.x * canvas.width, landmark.y * canvas.height, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = "red";
+        ctx.fill();
+      });
+        // If recording, save landmarks
+        if (isRecording) {
+          recordedData.push({
+            timestamp: videoElement.currentTime,
+            landmarks: results.poseLandmarks.map((lm) => ({
+              x: lm.x,
+              y: lm.y,
+              z: lm.z,
+              visibility: lm.visibility,
+            })),
+          });
+        }
+      }
+    });
+
+    // Load video list from the server
+    async function loadVideoList() {
+      try {
+        const response = await fetch("/api/videos");
+        if (!response.ok) throw new Error("Failed to fetch video list");
+        const videos = await response.json();
+
+        const selector = document.getElementById("videoSelector");
+        selector.innerHTML = ""; // Clear existing options
+        videos.forEach((video) => {
+          const option = document.createElement("option");
+          option.value = video;
+          option.textContent = video;
+          selector.appendChild(option);
+        });
+      } catch (error) {
+        console.error("Error loading video list:", error);
+      }
+    }
+
+    // Load selected video
+    document.getElementById("loadVideo").addEventListener("click", () => {
+      const selectedVideo = document.getElementById("videoSelector").value;
+      if (!selectedVideo) {
+        console.error("No video selected");
+        return;
+      }
+
+      videoElement.src = `/videos/${selectedVideo}`;
+    });
+
+    // Record button functionality
+    recordButton.addEventListener("click", () => {
+      isRecording = true;
+      recordedData = []; // Clear previous data
+      recordButton.disabled = true;
+      stopButton.disabled = false;
+      saveDataButton.disabled = true;
+      recordingStatus.textContent = "Recording...";
+      console.log("Recording started...");
+    });
+
+    // Stop button functionality
+    stopButton.addEventListener("click", () => {
+      isRecording = false;
+      recordButton.disabled = false;
+      stopButton.disabled = true;
+      saveDataButton.disabled = false;
+      recordingStatus.textContent = "Recording stopped.";
+      console.log("Recording stopped.");
+    });
+
+    // Save recorded data to JSON
+    saveDataButton.addEventListener("click", () => {
+      const data = JSON.stringify(recordedData, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `recorded_pose_data_${Date.now()}.json`;
+      link.click();
+      console.log("Data saved.");
+    });
+
+    // Start MediaPipe pose tracking
+    videoElement.addEventListener("play", () => {
+      const processFrame = async () => {
+        if (!videoElement.paused && !videoElement.ended) {
+          await pose.send({ image: videoElement });
+          requestAnimationFrame(processFrame);
+        }
+      };
+      processFrame();
+    });
+
+    // Load video list on page load
+    loadVideoList();
+  </script>
+</body>
+</html>
