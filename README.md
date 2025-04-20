@@ -9,3 +9,4 @@ The purpose is to train the AI with the golf swings to then track with the lift 
 <img width="818" alt="image" src="https://github.com/user-attachments/assets/b33be2fc-a7e7-4609-9c32-d702bc6bc6b3" />
 <img width="1057" alt="image" src="https://github.com/user-attachments/assets/bf21fc2c-9d5e-4593-8354-e5383e71ec23" />
 <img width="1150" alt="image" src="https://github.com/user-attachments/assets/daa432f9-8b82-497b-8bcb-ef735e1cfeb6" />
+<img width="988" alt="image" src="https://github.com/user-attachments/assets/ce278348-95ee-4ced-9642-753bd7841633" />
